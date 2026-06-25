@@ -80,7 +80,9 @@ def parse_anjun_us(wb):
                 for low, c in [(10, 3), (51, 4), (351, 5)]:
                     if num(r[c]) is not None:
                         out.append(E("安君", "COSCO,EMC-卡派", "美国", r[1], "KG", low, num(r[c]), "不包税递延", "J-CK"))
-    # 美东极速达：按仓库列价（非分区！）；仓库号含 'Wal-Mart ATL3' 格式 → 剥前缀
+    # 美东极速达：按仓库列价（非分区！）。仓库串原样当 key（亚马逊纯码 ABE8 / 沃尔玛 'Wal-Mart ATL3' /
+    # 中文名仓 '谷仓美东8号仓' 各自独立）—— 不可剥 Wal-Mart 前缀，否则亚马逊 PHL5 与沃尔玛 Wal-Mart PHL5
+    # 撞 key 互相覆盖（实测两者不同价）。物流按报价单原样填官方仓编码。
     if "美东极速达" in wb.sheetnames:
         ws3 = wb["美东极速达"]
         for r in cells(ws3, 115):
@@ -88,9 +90,7 @@ def parse_anjun_us(wb):
                 continue
             if any(k in r[1] for k in ("极速达", "仓库代码", "理赔")):  # 跳表头/小计行
                 continue
-            wh = norm_wh(r[1])
-            if not wh:
-                continue
+            wh = r[1].strip()
             for low, c in [(10, 3), (51, 4), (351, 5)]:
                 if num(r[c]) is not None:
                     out.append(E("安君", "美东极速达", "美国", wh, "KG", low, num(r[c]), "不包税递延", "J-NK"))
