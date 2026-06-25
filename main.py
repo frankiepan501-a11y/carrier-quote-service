@@ -13,6 +13,7 @@ from fastapi import FastAPI, Header, HTTPException, Query
 
 import feishu
 import parsers
+import backfill
 
 APP_TOKEN = os.environ.get("APP_TOKEN", "")
 SNAP_TABLE = os.environ.get("SNAP_TABLE", "")
@@ -46,6 +47,15 @@ def _check_auth(authorization):
 def health():
     return {"ok": True, "snap": SNAP_TABLE, "dict": DICT_TABLE,
             "templates": ["|".join(k) for k in parsers.DISPATCH.keys()]}
+
+
+@app.post("/backfill/run")
+def backfill_run(authorization: str = Header(None),
+                 dry_run: int = Query(0, description="1=只算不写"),
+                 all_rows: int = Query(0, description="1=全表(默认仅迁入票)")):
+    """统一回填：物流单价/报关/清关(对账型) + 申报金额/税金(计算型)。"""
+    _check_auth(authorization)
+    return backfill.run(dry_run=bool(dry_run), all_rows=bool(all_rows))
 
 
 @app.post("/parse/scan")
