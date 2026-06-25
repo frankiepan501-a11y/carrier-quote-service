@@ -26,6 +26,14 @@ def cleanwh(s):
     return [w.strip() for w in s.split('/') if w.strip()]
 
 
+def norm_wh(s):
+    """规范仓库号：剥掉报价单里的 'Wal-Mart '/'Walmart ' 前缀。
+    'Wal-Mart ATL3' -> 'ATL3'；回填侧对物流填的官方仓编码做同样处理保证对得上。"""
+    if not s:
+        return ""
+    return re.sub(r'(?i)^wal-?mart\s+', '', str(s).strip()).strip()
+
+
 def E(sv, ch, co, wh, unit, low, price, bs, code="", note=""):
     return {"服务商": sv, "渠道": ch, "国家": co, "仓库代码": wh, "计费单位": unit,
             "计费重档下限": low, "单价": price, "包税属性": bs, "渠道代码": code, "备注": note}
@@ -72,14 +80,20 @@ def parse_anjun_us(wb):
                 for low, c in [(10, 3), (51, 4), (351, 5)]:
                     if num(r[c]) is not None:
                         out.append(E("安君", "COSCO,EMC-卡派", "美国", r[1], "KG", low, num(r[c]), "不包税递延", "J-CK"))
-    # 美东极速达：按仓库列价（非分区！）
+    # 美东极速达：按仓库列价（非分区！）；仓库号含 'Wal-Mart ATL3' 格式 → 剥前缀
     if "美东极速达" in wb.sheetnames:
         ws3 = wb["美东极速达"]
         for r in cells(ws3, 115):
-            if WH.match(r[1]) and num(r[3]) is not None:
-                for low, c in [(10, 3), (51, 4), (351, 5)]:
-                    if num(r[c]) is not None:
-                        out.append(E("安君", "美东极速达", "美国", r[1], "KG", low, num(r[c]), "不包税递延", "J-NK"))
+            if num(r[3]) is None or not r[1]:
+                continue
+            if any(k in r[1] for k in ("极速达", "仓库代码", "理赔")):  # 跳表头/小计行
+                continue
+            wh = norm_wh(r[1])
+            if not wh:
+                continue
+            for low, c in [(10, 3), (51, 4), (351, 5)]:
+                if num(r[c]) is not None:
+                    out.append(E("安君", "美东极速达", "美国", wh, "KG", low, num(r[c]), "不包税递延", "J-NK"))
     return out
 
 
