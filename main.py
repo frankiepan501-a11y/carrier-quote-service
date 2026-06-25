@@ -69,7 +69,8 @@ def scan(authorization: str = Header(None),
         ven = nz(f.get("货代"))
         line = nz(f.get("线路"))
         status = nz(f.get("解析状态"))
-        if status != "待解析" and not force:
+        # 物流新上传时解析状态为空；空 或 待解析 都处理，已解析/失败/归档则跳过(除非 force)
+        if status not in ("", "待解析") and not force:
             continue
         rid = snap["record_id"]
         att = f.get("报价单附件") or []
